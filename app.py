@@ -1,52 +1,48 @@
 import streamlit as st
-import torch
-import torchvision.models as models
-import torchvision.transforms as transforms
-from PIL import Image
+import tensorflow as tf
+import numpy as np
+import pandas as pd
+from sklearn.preprocessing import StandardScaler
 
-st.title("🚀 My AI Model Deployment")
-st.write("Upload an image to see the prediction.")
+st.title("🏦 Bank Customer Churn Predictor")
+st.write("Enter customer details to predict if they will leave the bank.")
 
+# 1. Load the Keras Model (.h5)
 @st.cache_resource
-def load_my_model():
-    # 1. Try to load the file directly (Safe for most Colab saves)
-    try:
-        # We load with weights_only=False here because many Colab models 
-        # are saved as full objects rather than just state_dicts
-        model = torch.load('my_awesome_model.pth', map_location=torch.device('cpu'))
-        # If it's just the 'brain' weights, we need to put it in a skeleton
-        if isinstance(model, dict):
-            # If this fails, change 'resnet18' to the one you used in Colab
-            skeleton = models.resnet18() 
-            skeleton.load_state_dict(model, strict=False)
-            model = skeleton
-    except Exception as e:
-        st.error(f"Error loading model: {e}")
-        return None
-    
-    model.eval()
+def load_keras_model():
+    # Make sure this name matches the file in your GitHub repo!
+    model = tf.keras.models.load_model('best_model.h5')
     return model
 
-model = load_my_model()
+model = load_keras_model()
 
-# 2. Upload and Predict Logic
-uploaded_file = st.file_uploader("Choose an image...", type=["jpg", "jpeg", "png"])
+# 2. Create Input Fields for EDA Variables
+col1, col2 = st.columns(2)
 
-if uploaded_file is not None and model is not None:
-    image = Image.open(uploaded_file).convert('RGB')
-    st.image(image, caption='Uploaded Image', use_container_width=True)
-    
-    preprocess = transforms.Compose([
-        transforms.Resize(256),
-        transforms.CenterCrop(224),
-        transforms.ToTensor(),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-    ])
-    
-    input_tensor = preprocess(image).unsqueeze(0)
+with col1:
+    credit_score = st.number_input("Credit Score", min_value=300, max_value=850, value=600)
+    age = st.number_input("Age", min_value=18, max_value=100, value=30)
+    tenure = st.slider("Tenure (Years)", 0, 10, 5)
+    balance = st.number_input("Balance", min_value=0.0, value=50000.0)
 
-    with torch.no_grad():
-        output = model(input_tensor)
+with col2:
+    num_products = st.selectbox("Number of Products", [1, 2, 3, 4])
+    has_card = st.checkbox("Has Credit Card?")
+    is_active = st.checkbox("Is Active Member?")
+    salary = st.number_input("Estimated Salary", min_value=0.0, value=50000.0)
+
+# 3. Prediction Logic
+if st.button("Predict Churn"):
+    # Prepare input data (Matching your assignment preprocessing)
+    # Note: You would normally need the original Scaler object here for accuracy
+    input_data = np.array([[credit_score, age, tenure, balance, num_products, 
+                            int(has_card), int(is_active), salary]])
     
-    st.success("Analysis Complete!")
-    st.write("Raw output scores:", output)
+    # Placeholder for scaling - In a real app, you'd load a saved scaler.pkl
+    prediction = model.predict(input_data)
+    probability = prediction[0][0]
+
+    if probability > 0.5:
+        st.error(f"High Risk: {probability:.2%} chance of churning.")
+    else:
+        st.success(f"Low Risk: {probability:.2%} chance of staying.")
