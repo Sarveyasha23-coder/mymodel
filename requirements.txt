@@ -1,5 +1,6 @@
 streamlit
-tensorflow-cpu
+tensorflow
 numpy
 pandas
 scikit-learn
+h5py
