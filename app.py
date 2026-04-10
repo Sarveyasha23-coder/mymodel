@@ -8,7 +8,7 @@ from PIL import Image
 import cv2
 
 # --- PAGE CONFIG ---
-st.set_page_config(page_title="Deep Learning Deployment", layout="wide")
+st.set_page_config(page_title="Deep Learning Built By Sarveyasha Sodhiya", layout="wide")
 
 # --- LOAD MODELS (Cached for performance) ---
 @st.cache_resource
