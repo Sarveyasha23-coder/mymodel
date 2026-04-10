@@ -33,12 +33,12 @@ def load_accident_model():
     return model
 
 # --- SIDEBAR NAVIGATION ---
-st.sidebar.title("Assignment Modules")
-app_mode = st.sidebar.selectbox("Choose the project", ["Home", "Bank Churn Prediction", "Accident Detection"])
+st.sidebar.title(" Modules")
+app_mode = st.sidebar.selectbox("Choose the module", ["Home", "Bank Churn Prediction", "Accident Detection"])
 
 # --- MODULE 1: HOME ---
 if app_mode == "Home":
-    st.title("Deep Learning Model")
+    st.title("Deep Learning Model Built By Sarveyasha Sodhiya")
     st.write("Welcome! Use the sidebar to navigate between the Churn ANN and the Accident Detection CNN.")
 
 # --- MODULE 2: CHURN PREDICTION ---
