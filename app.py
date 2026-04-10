@@ -38,7 +38,7 @@ app_mode = st.sidebar.selectbox("Choose the project", ["Home", "Bank Churn Predi
 
 # --- MODULE 1: HOME ---
 if app_mode == "Home":
-    st.title("Deep Learning Assignment Deployment")
+    st.title("Deep Learning Model")
     st.write("Welcome! Use the sidebar to navigate between the Churn ANN and the Accident Detection CNN.")
 
 # --- MODULE 2: CHURN PREDICTION ---
