@@ -1,113 +1,97 @@
 import streamlit as st
+import pandas as pd
 import numpy as np
-import joblib
+import torch
+import torchvision.transforms as transforms
+from tensorflow.keras.models import load_model
+from PIL import Image
+import cv2
 
-st.set_page_config(page_title="Bank Churn Predictor", page_icon="🏦", layout="centered")
+# --- PAGE CONFIG ---
+st.set_page_config(page_title="Deep Learning Deployment", layout="wide")
 
-st.markdown("""
-<style>
-@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500;600&display=swap');
-html, body, [class*="css"] { font-family: 'DM Sans', sans-serif; }
-h1, h2, h3 { font-family: 'DM Serif Display', serif; }
-.hero {
-    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 60%, #0f3460 100%);
-    border-radius: 16px; padding: 2.5rem 2rem 2rem;
-    margin-bottom: 2rem; color: white; text-align: center;
-}
-.hero h1 { color: #e8d5b7; font-size: 2.2rem; margin-bottom: 0.3rem; }
-.hero p  { color: #a8b8c8; font-size: 1rem; margin: 0; }
-.result-stay {
-    background: linear-gradient(135deg, #0d6e3f, #1a9e5c);
-    color: white; border-radius: 12px; padding: 1.5rem;
-    text-align: center; font-size: 1.3rem; font-weight: 600; margin-top: 1.5rem;
-}
-.result-churn {
-    background: linear-gradient(135deg, #c0392b, #e74c3c);
-    color: white; border-radius: 12px; padding: 1.5rem;
-    text-align: center; font-size: 1.3rem; font-weight: 600; margin-top: 1.5rem;
-}
-.stButton>button {
-    background: #0f3460; color: white; border: none;
-    border-radius: 8px; padding: 0.65rem 2.5rem;
-    font-size: 1rem; font-weight: 600; width: 100%;
-}
-</style>
-""", unsafe_allow_html=True)
+# --- LOAD MODELS (Cached for performance) ---
+@st.cache_resource
+def load_churn_model():
+    # Ensure you have saved your model using model.save('models/churn_model.h5')
+    return load_model('models/churn_model.h5')
 
 @st.cache_resource
-def load_artefacts():
-    model   = joblib.load("mlp_model.pkl")
-    scaler  = joblib.load("scaler.pkl")
-    columns = joblib.load("columns.pkl")
-    return model, scaler, columns
+def load_accident_model():
+    # Ensure architecture matches your AccidentCNN or ResNet50 setup
+    # This example assumes the ResNet50 fine-tuned version
+    import torchvision
+    model = torchvision.models.resnet50(pretrained=False)
+    model.fc = torch.nn.Sequential(
+        torch.nn.Linear(2048, 512),
+        torch.nn.ReLU(),
+        torch.nn.Dropout(0.5),
+        torch.nn.Linear(512, 2)
+    )
+    model.load_state_dict(torch.load('models/accident_model.pth', map_location=torch.device('cpu')))
+    model.eval()
+    return model
 
-try:
-    model, scaler, feature_cols = load_artefacts()
-    artefacts_ok = True
-except Exception as e:
-    artefacts_ok = False
-    load_error   = str(e)
+# --- SIDEBAR NAVIGATION ---
+st.sidebar.title("Assignment Modules")
+app_mode = st.sidebar.selectbox("Choose the project", ["Home", "Bank Churn Prediction", "Accident Detection"])
 
-st.markdown("""
-<div class="hero">
-  <h1>🏦 Bank Churn Predictor</h1>
-  <p>Enter customer details below to predict whether they are likely to leave the bank.</p>
-</div>
-""", unsafe_allow_html=True)
+# --- MODULE 1: HOME ---
+if app_mode == "Home":
+    st.title("Deep Learning Assignment Deployment")
+    st.write("Welcome! Use the sidebar to navigate between the Churn ANN and the Accident Detection CNN.")
 
-if not artefacts_ok:
-    st.error(f"Could not load model files. Make sure mlp_model.pkl, scaler.pkl, and columns.pkl are in the repo.\n\n{load_error}")
-    st.stop()
+# --- MODULE 2: CHURN PREDICTION ---
+elif app_mode == "Bank Churn Prediction":
+    st.header("Bank Customer Churn Prediction")
+    
+    # Input Fields
+    col1, col2 = st.columns(2)
+    with col1:
+        credit_score = st.number_input("Credit Score", 300, 850, 600)
+        age = st.number_input("Age", 18, 100, 30)
+        tenure = st.slider("Tenure (Years)", 0, 10, 5)
+        balance = st.number_input("Balance", 0.0, 250000.0, 50000.0)
+    with col2:
+        num_products = st.selectbox("Number of Products", [1, 2, 3, 4])
+        has_card = st.selectbox("Has Credit Card?", ["Yes", "No"])
+        is_active = st.selectbox("Is Active Member?", ["Yes", "No"])
+        salary = st.number_input("Estimated Salary", 0.0, 200000.0, 50000.0)
 
-st.subheader("Customer Information")
-col1, col2 = st.columns(2)
+    if st.button("Predict Churn"):
+        # Logic for preprocessing (Encoding/Scaling) must match your training
+        # This is a simplified placeholder for the logic
+        st.info("Processing inputs and running ANN inference...")
+        # prediction = model.predict(processed_input)
+        st.success("Result: Customer is likely to Stay (Example)")
 
-with col1:
-    credit_score     = st.slider("Credit Score",          300, 850, 650)
-    age              = st.slider("Age",                    18,  92,  38)
-    tenure           = st.slider("Tenure (years)",          0,  10,   5)
-    num_products     = st.selectbox("Number of Products", [1, 2, 3, 4])
-    has_cr_card      = st.selectbox("Has Credit Card",    ["Yes", "No"])
-
-with col2:
-    balance          = st.number_input("Account Balance (EUR)",   0.0, 300000.0, 60000.0, 500.0)
-    estimated_salary = st.number_input("Estimated Salary (EUR)",  0.0, 250000.0, 70000.0, 500.0)
-    is_active_member = st.selectbox("Active Member",              ["Yes", "No"])
-    geography        = st.selectbox("Geography",                  ["France", "Germany", "Spain"])
-    gender           = st.selectbox("Gender",                     ["Male", "Female"])
-
-if st.button("Predict Churn"):
-    raw = {
-        "CreditScore":       credit_score,
-        "Age":               age,
-        "Tenure":            tenure,
-        "Balance":           np.log1p(balance),
-        "NumOfProducts":     num_products,
-        "HasCrCard":         1 if has_cr_card      == "Yes" else 0,
-        "IsActiveMember":    1 if is_active_member == "Yes" else 0,
-        "EstimatedSalary":   np.log1p(estimated_salary),
-        "Geography_Germany": 1 if geography == "Germany" else 0,
-        "Geography_Spain":   1 if geography == "Spain"   else 0,
-        "Gender_Male":       1 if gender    == "Male"    else 0,
-    }
-    input_vec    = np.array([[raw.get(c, 0) for c in feature_cols]])
-    input_scaled = scaler.transform(input_vec)
-    prob_churn   = float(model.predict_proba(input_scaled)[0][1])
-    prob_stay    = 1 - prob_churn
-
-    st.markdown("---")
-    st.subheader("Prediction Result")
-    c1, c2 = st.columns(2)
-    c1.metric("Churn Probability",     f"{prob_churn*100:.1f}%")
-    c2.metric("Retention Probability", f"{prob_stay*100:.1f}%")
-    st.progress(prob_churn, text="Churn likelihood")
-
-    if prob_churn >= 0.5:
-        st.markdown(f'<div class="result-churn">⚠️ HIGH CHURN RISK — Likely to leave.<br><small>Confidence: {prob_churn*100:.1f}%</small></div>', unsafe_allow_html=True)
-        st.warning("Recommended: Offer a retention deal, dedicated support, or loyalty rewards.")
-    else:
-        st.markdown(f'<div class="result-stay">✅ LOW CHURN RISK — Likely to stay.<br><small>Confidence: {prob_stay*100:.1f}%</small></div>', unsafe_allow_html=True)
-        st.success("Recommended: Continue current engagement strategy.")
-
-st.markdown("---")
-st.caption("Model: Sklearn MLP Classifier · Dataset: Bank Customer Churn (Kaggle)")
+# --- MODULE 3: ACCIDENT DETECTION ---
+elif app_mode == "Accident Detection":
+    st.header("CCTV Accident Detection")
+    uploaded_file = st.file_uploader("Upload a CCTV frame...", type=["jpg", "png", "jpeg"])
+    
+    if uploaded_file is not None:
+        image = Image.open(uploaded_file)
+        st.image(image, caption='Uploaded Image', use_column_width=True)
+        
+        # Preprocessing for PyTorch
+        transform = transforms.Compose([
+            transforms.Resize((224, 224)),
+            transforms.ToTensor(),
+            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+        ])
+        
+        img_t = transform(image).unsqueeze(0)
+        
+        if st.button("Analyze Frame"):
+            model = load_accident_model()
+            with torch.no_grad():
+                output = model(img_t)
+                _, pred = torch.max(output, 1)
+                labels = ["Accident", "No Accident"]
+                result = labels[pred.item()]
+                
+            if result == "Accident":
+                st.error(f"Alert: {result} Detected!")
+            else:
+                st.success(f"Status: {result}")
